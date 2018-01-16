@@ -1,0 +1,85 @@
+Q1. Write a trigger that makes new students named 'Friendly' automatically like everyone else in their grade. That is, after the trigger runs, we should have ('Friendly', A) in the Likes table for every other Highschooler A in the same grade as 'Friendly'.
+
+create trigger Friendly
+after insert on Highschooler
+for each row when (new.name = 'Friendly')
+begin
+insert into Likes select new.id, id from Highschooler where grade = new.grade and id <> new.id;
+end;
+
+
+Q2. Write one or more triggers to manage the grade attribute of new Highschoolers. If the inserted tuple has a value less than 9 or greater than 12, change the value to NULL. On the other hand, if the inserted tuple has a null value for grade, change it to 9. 
+
+create trigger Gradecheck
+after insert on Highschooler
+for each row swhen  (new.grade <9 or new.grade >12)
+begin
+update Highschooler set grade=null
+where id=new.id;
+end;
+|
+create trigger Nullgrade
+after insert on Highschooler
+for each row when new.grade is null
+begin
+update Highschooler set grade=9
+where id=new.id;
+end;
+
+
+Q3. Write one or more triggers to maintain symmetry in friend relationships. Specifically, if (A,B) is deleted from Friend, then (B,A) should be deleted too. If (A,B) is inserted into Friend then (B,A) should be inserted too. Don't worry about updates to the Friend table. 
+
+create trigger symins
+after insert on Friend
+for each row
+begin
+insert into Friend values (new.ID2, new.ID1);
+end;
+|
+create trigger symdel
+after delete on Friend
+for each row
+begin
+delete from Friend where (ID1=old.ID2) and (ID2= old.ID1);
+end;
+
+
+Q4. Write a trigger that automatically deletes students when they graduate, i.e., when their grade is updated to exceed 12. 
+
+create trigger grad
+after update on Highschooler
+for each row when (new.grade > 12)
+begin
+delete from Highschooler
+where (id = new.id);
+end;
+
+
+Q5. Write a trigger that automatically deletes students when they graduate, i.e., when their grade is updated to exceed 12 (same as Question 4). In addition, write a trigger so when a student is moved ahead one grade, then so are all of his or her friends. 
+
+create trigger grad
+after update on Highschooler
+for each row when (new.grade > 12)
+begin
+delete from Highschooler where (id = new.id);
+end;
+|
+create trigger T
+after update on Highschooler
+for each row when new.grade = old.grade + 1
+begin
+update Highschooler
+set grade=grade+1
+where ID in (Select ID2 from Friend where ID1=New.ID);
+end;
+
+
+Q6. Write a trigger to enforce the following behavior: If A liked B but is updated to A liking C instead, and B and C were friends, make B and C no longer friends. Don't forget to delete the friendship in both directions, and make sure the trigger only runs when the "liked" (ID2) person is changed but the "liking" (ID1) person is not changed. 
+
+create trigger T
+after update of ID2 on Likes
+for each row when old.ID1 = new.ID1
+begin
+delete from Friend
+where  (ID1=old.ID2 and ID2=new.ID2) or (ID1=new.ID2 and  ID2=old.ID2);
+end;
